@@ -16,8 +16,14 @@
       <a href="#contact">Contact</a>
     </nav>
     <a href="#" onclick="toggleAuth(); return false;" id="auth-link">Sign Up / Log In</a>
+    <a href="#" onclick="toggleOrders(); return false;" id="orders-link" class="hidden">My Orders</a>
     <div class="cart-icon" onclick="toggleCart()">🛒 Cart (<span id="cart-count">0</span>)</div>
   </header>
+
+  <div id="orders-panel" class="cart-panel hidden">
+    <h3>My Orders</h3>
+    <div id="orders-list"></div>
+  </div>
 
   <div id="auth-panel" class="cart-panel hidden">
     <div id="signup-view">
@@ -44,6 +50,14 @@
     <ul id="cart-items"></ul>
     <p id="cart-empty-msg">Your cart is empty.</p>
     <p id="cart-total"></p>
+    <button id="checkout-btn" onclick="showCheckout()">Checkout</button>
+
+    <div id="checkout-view" class="hidden">
+      <h3>Delivery Address</h3>
+      <textarea id="delivery-address" placeholder="Enter your full delivery address" rows="3"></textarea>
+      <button onclick="placeOrder()">Place Order (Cash on Delivery)</button>
+      <p id="checkout-message"></p>
+    </div>
   </div>
 
   <section class="hero">

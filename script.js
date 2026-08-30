@@ -82,6 +82,59 @@ function toggleCart() {
   panel.classList.toggle('hidden');
 }
 
+// NEW: shows the delivery address form when "Checkout" is clicked
+function showCheckout() {
+  if (cart.length === 0) {
+    alert('Your cart is empty — add something first!');
+    return;
+  }
+  document.getElementById('checkout-view').classList.remove('hidden');
+}
+
+// NEW: sends the order to the server
+async function placeOrder() {
+  const address = document.getElementById('delivery-address').value;
+  const messageBox = document.getElementById('checkout-message');
+
+  if (!address.trim()) {
+    messageBox.textContent = 'Please enter a delivery address.';
+    messageBox.style.color = 'red';
+    return;
+  }
+
+  // Recalculate the total the same way renderCart() does
+  let total = 0;
+  cart.forEach(function(item) { total += item.price; });
+
+  const response = await fetch('/api/orders', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ items: cart, total: total, deliveryAddress: address })
+  });
+
+  const result = await response.json();
+
+  if (response.ok) {
+    messageBox.textContent = 'Order placed! Order #' + result.orderId + '. Pay cash on delivery.';
+    messageBox.style.color = 'green';
+
+    // Empty the cart now that the order is placed
+    cart = [];
+    document.getElementById('cart-count').textContent = 0;
+    renderCart();
+    document.getElementById('delivery-address').value = '';
+  } else {
+    messageBox.textContent = result.error;
+    messageBox.style.color = 'red';
+
+    // If not logged in, tell them clearly and open the login panel
+    if (response.status === 401) {
+      toggleAuth();
+      showLogin();
+    }
+  }
+}
+
 // NEW: shows/hides the signup/login box
 function toggleAuth() {
   const panel = document.getElementById('auth-panel');
@@ -154,17 +207,60 @@ function showSignup() {
   document.getElementById('auth-message').textContent = '';
 }
 
-// NEW: updates the header link depending on login state
+// UPDATED: also shows/hides the "My Orders" link based on login state
 function updateAuthUI(loggedIn, email) {
   const authLink = document.getElementById('auth-link');
+  const ordersLink = document.getElementById('orders-link');
 
   if (loggedIn) {
     authLink.textContent = 'Hi, ' + email + ' (Log out)';
     authLink.onclick = function() { logout(); return false; };
+    ordersLink.classList.remove('hidden');
   } else {
     authLink.textContent = 'Sign Up / Log In';
     authLink.onclick = function() { toggleAuth(); return false; };
+    ordersLink.classList.add('hidden');
   }
+}
+
+// NEW: shows/hides the My Orders panel, loading fresh data each time it opens
+async function toggleOrders() {
+  const panel = document.getElementById('orders-panel');
+  panel.classList.toggle('hidden');
+
+  if (!panel.classList.contains('hidden')) {
+    await loadOrders();
+  }
+}
+
+// NEW: fetches the logged-in user's orders and displays them
+async function loadOrders() {
+  const response = await fetch('/api/orders');
+  const orders = await response.json();
+
+  const list = document.getElementById('orders-list');
+  list.innerHTML = '';
+
+  if (orders.length === 0) {
+    list.innerHTML = '<p>No orders yet.</p>';
+    return;
+  }
+
+  orders.forEach(function(order) {
+    // items_json was stored as text — JSON.parse turns it back into a real array
+    const items = JSON.parse(order.items_json);
+    const itemNames = items.map(function(item) { return item.name; }).join(', ');
+
+    const card = document.createElement('div');
+    card.className = 'order-card';
+    card.innerHTML =
+      '<strong>Order #' + order.id + '</strong> — <span class="order-status">' + order.status + '</span><br>' +
+      'Items: ' + itemNames + '<br>' +
+      'Total: $' + order.total.toFixed(2) + '<br>' +
+      'Deliver to: ' + order.delivery_address;
+
+    list.appendChild(card);
+  });
 }
 
 // NEW: checks with the server whether we're already logged in,

@@ -100,6 +100,47 @@ app.get('/api/me', (req, res) => {
   }
 });
 
+// NEW: places an order — only works if the user is logged in
+app.post('/api/orders', (req, res) => {
+  // Check login first — this is important: no placing orders as "nobody"
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'You must be logged in to place an order.' });
+  }
+
+  const { items, total, deliveryAddress } = req.body;
+
+  if (!deliveryAddress || deliveryAddress.trim() === '') {
+    return res.status(400).json({ error: 'Delivery address is required.' });
+  }
+
+  if (!items || items.length === 0) {
+    return res.status(400).json({ error: 'Your cart is empty.' });
+  }
+
+  const insert = db.prepare(
+    'INSERT INTO orders (user_id, items_json, total, delivery_address) VALUES (?, ?, ?, ?)'
+  );
+
+  // JSON.stringify turns the items array into a text string so it can be
+  // stored in a single database column (SQLite doesn't store arrays directly)
+  const result = insert.run(req.session.userId, JSON.stringify(items), total, deliveryAddress);
+
+  res.json({ success: true, orderId: result.lastInsertRowid });
+});
+
+// NEW: fetches the logged-in user's own past orders — never anyone else's
+app.get('/api/orders', (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'You must be logged in to view orders.' });
+  }
+
+  const orders = db.prepare(
+    'SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC'
+  ).all(req.session.userId);
+
+  res.json(orders);
+});
+
 // This actually starts the server, listening on port 3000
 app.listen(PORT, () => {
   console.log('Server is running at http://localhost:' + PORT);

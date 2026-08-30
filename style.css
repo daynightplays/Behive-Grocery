@@ -37,6 +37,26 @@ nav a {
   cursor: pointer;
 }
 
+#orders-link {
+  color: white;
+  text-decoration: none;
+  margin-right: 16px;
+  cursor: pointer;
+}
+
+.order-card {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.order-card .order-status {
+  color: #2e7d32;
+  font-weight: bold;
+}
+
 .cart-panel input {
   display: block;
   width: 100%;
@@ -44,6 +64,17 @@ nav a {
   margin-bottom: 10px;
   border: 1px solid #ccc;
   border-radius: 4px;
+}
+
+.cart-panel textarea {
+  display: block;
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: Arial, sans-serif;
+  resize: vertical;
 }
 
 .cart-panel button {
