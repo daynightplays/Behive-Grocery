@@ -24,8 +24,11 @@ async function loadProducts() {
   });
 }
 
-// Run loadProducts() the moment the page finishes loading
-window.addEventListener('DOMContentLoaded', loadProducts);
+// Run these the moment the page finishes loading
+window.addEventListener('DOMContentLoaded', function() {
+  loadProducts();
+  checkLoginStatus();
+});
 
 function addToCart(productName, productPrice) {
   cart.push({ name: productName, price: productPrice });
@@ -77,4 +80,97 @@ function renderCart() {
 function toggleCart() {
   const panel = document.getElementById('cart-panel');
   panel.classList.toggle('hidden');
+}
+
+// NEW: shows/hides the signup/login box
+function toggleAuth() {
+  const panel = document.getElementById('auth-panel');
+  panel.classList.toggle('hidden');
+}
+
+// NEW: sends the signup form's email/password to the server
+async function signup() {
+  const email = document.getElementById('signup-email').value;
+  const password = document.getElementById('signup-password').value;
+  const messageBox = document.getElementById('auth-message');
+
+  const response = await fetch('/api/signup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: email, password: password })
+  });
+
+  const result = await response.json();
+
+  if (response.ok) {
+    messageBox.textContent = result.message + ' You can log in now.';
+    messageBox.style.color = 'green';
+  } else {
+    messageBox.textContent = result.error;
+    messageBox.style.color = 'red';
+  }
+}
+
+// NEW: sends login form data to the server
+async function login() {
+  const email = document.getElementById('login-email').value;
+  const password = document.getElementById('login-password').value;
+  const messageBox = document.getElementById('auth-message');
+
+  const response = await fetch('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: email, password: password })
+  });
+
+  const result = await response.json();
+
+  if (response.ok) {
+    messageBox.textContent = '';
+    updateAuthUI(true, result.email);
+    toggleAuth(); // close the panel after successful login
+  } else {
+    messageBox.textContent = result.error;
+    messageBox.style.color = 'red';
+  }
+}
+
+// NEW: logs the user out
+async function logout() {
+  await fetch('/api/logout', { method: 'POST' });
+  updateAuthUI(false);
+}
+
+// NEW: switches between the signup and login forms inside the panel
+function showLogin() {
+  document.getElementById('signup-view').classList.add('hidden');
+  document.getElementById('login-view').classList.remove('hidden');
+  document.getElementById('auth-message').textContent = '';
+}
+
+function showSignup() {
+  document.getElementById('login-view').classList.add('hidden');
+  document.getElementById('signup-view').classList.remove('hidden');
+  document.getElementById('auth-message').textContent = '';
+}
+
+// NEW: updates the header link depending on login state
+function updateAuthUI(loggedIn, email) {
+  const authLink = document.getElementById('auth-link');
+
+  if (loggedIn) {
+    authLink.textContent = 'Hi, ' + email + ' (Log out)';
+    authLink.onclick = function() { logout(); return false; };
+  } else {
+    authLink.textContent = 'Sign Up / Log In';
+    authLink.onclick = function() { toggleAuth(); return false; };
+  }
+}
+
+// NEW: checks with the server whether we're already logged in,
+// as soon as the page loads (so refreshing doesn't log you out)
+async function checkLoginStatus() {
+  const response = await fetch('/api/me');
+  const result = await response.json();
+  updateAuthUI(result.loggedIn, result.email);
 }

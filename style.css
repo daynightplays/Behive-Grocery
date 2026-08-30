@@ -30,6 +30,47 @@ nav a {
   cursor: pointer;
 }
 
+#auth-link {
+  color: white;
+  text-decoration: none;
+  margin-right: 16px;
+  cursor: pointer;
+}
+
+.cart-panel input {
+  display: block;
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.cart-panel button {
+  width: 100%;
+  background-color: #2e7d32;
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+#auth-message {
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+.auth-switch {
+  font-size: 13px;
+  margin-top: 8px;
+  text-align: center;
+}
+
+.auth-switch a {
+  color: #2e7d32;
+}
+
 .cart-panel {
   position: absolute;
   top: 60px;

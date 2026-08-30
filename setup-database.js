@@ -2,13 +2,9 @@
 // (or again later if you want to reset your product list).
 
 const Database = require('better-sqlite3');
-
-// This creates (or opens, if it already exists) a file called store.db
-// That single file IS your database — everything gets stored inside it.
 const db = new Database('store.db');
 
-// Create a "table" — think of it like a spreadsheet with named columns —
-// but only if one doesn't already exist, so running this twice is safe.
+// Products table (unchanged from before)
 db.exec(`
   CREATE TABLE IF NOT EXISTS products (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -18,21 +14,28 @@ db.exec(`
   )
 `);
 
-// Check if the table is empty before adding products,
-// so we don't add duplicates every time this script runs.
+// NEW: users table — stores accounts
+// password_hash holds a scrambled version of the password, NEVER the real one
+db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
 const existingCount = db.prepare('SELECT COUNT(*) AS count FROM products').get();
 
 if (existingCount.count === 0) {
   const insert = db.prepare('INSERT INTO products (name, price, emoji) VALUES (?, ?, ?)');
-
   insert.run('Apples (1 lb)', 2.99, '🍎');
   insert.run('Milk (1 gal)', 3.49, '🥛');
   insert.run('Bread', 2.50, '🍞');
-
   console.log('Added 3 starting products to the database.');
 } else {
   console.log('Products already exist in the database — skipped adding duplicates.');
 }
 
 db.close();
-console.log('Database setup complete. A file called store.db now exists in this folder.');
+console.log('Database setup complete. Users table and products table both ready.');
