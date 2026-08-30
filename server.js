@@ -182,6 +182,31 @@ app.delete('/api/admin/products/:id', requireAdmin, (req, res) => {
   res.json({ success: true });
 });
 
+// NEW: lets an admin see ALL orders from ALL customers (not just their own)
+app.get('/api/admin/orders', requireAdmin, (req, res) => {
+  const orders = db.prepare(`
+    SELECT orders.*, users.email AS customer_email
+    FROM orders
+    JOIN users ON orders.user_id = users.id
+    ORDER BY orders.created_at DESC
+  `).all();
+
+  res.json(orders);
+});
+
+// NEW: lets an admin update an order's status
+app.put('/api/admin/orders/:id', requireAdmin, (req, res) => {
+  const { status } = req.body;
+  const validStatuses = ['Placed', 'Packed', 'Out for Delivery', 'Delivered', 'Cancelled'];
+
+  if (!validStatuses.includes(status)) {
+    return res.status(400).json({ error: 'Invalid status.' });
+  }
+
+  db.prepare('UPDATE orders SET status = ? WHERE id = ?').run(status, req.params.id);
+  res.json({ success: true });
+});
+
 // This actually starts the server, listening on port 3000
 app.listen(PORT, () => {
   console.log('Server is running at http://localhost:' + PORT);
