@@ -15,8 +15,12 @@ app.use(express.json());
 
 // NEW: sets up sessions — this lets the server remember who's logged in
 // across different requests, using a secure cookie in the browser
+// The session secret is read from an environment variable (SESSION_SECRET)
+// instead of being written directly in the code — this keeps it out of GitHub.
+// If it's not set (like on your own computer during testing), it falls back
+// to a placeholder — fine for local testing, but the real one must be set on Render.
 app.use(session({
-  secret: 'change-this-to-something-random-later',
+  secret: process.env.SESSION_SECRET || 'local-dev-only-not-for-production',
   resave: false,
   saveUninitialized: false
 }));
