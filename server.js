@@ -5,10 +5,19 @@ const express = require('express');
 const Database = require('better-sqlite3');
 const bcrypt = require('bcrypt');
 const session = require('express-session');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 const PORT = 3000;
 const db = new Database('store.db');
+
+// NEW: limits login attempts — max 10 tries per 15 minutes, per visitor.
+// This makes it impractical for someone to "guess" a password by brute force.
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes, in milliseconds
+  max: 10,
+  message: { error: 'Too many login attempts. Please try again in 15 minutes.' }
+});
 
 // This lets the server understand JSON data sent from the browser
 app.use(express.json());
@@ -45,6 +54,18 @@ app.post('/api/signup', async (req, res) => {
     return res.status(400).json({ error: 'Email and password are required.' });
   }
 
+  // NEW: a simple pattern check — makes sure the email at least LOOKS like
+  // one (something@something.something). This isn't perfect, but catches typos.
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailPattern.test(email)) {
+    return res.status(400).json({ error: 'Please enter a valid email address.' });
+  }
+
+  // NEW: require a reasonable minimum password length
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+  }
+
   try {
     // Scramble the password — 10 is the "cost factor," a standard safe default
     const passwordHash = await bcrypt.hash(password, 10);
@@ -64,7 +85,8 @@ app.post('/api/signup', async (req, res) => {
 });
 
 // NEW: login route — checks email/password and starts a session
-app.post('/api/login', async (req, res) => {
+// loginLimiter runs first, blocking excessive repeated attempts
+app.post('/api/login', loginLimiter, async (req, res) => {
   const { email, password } = req.body;
 
   const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
@@ -174,8 +196,19 @@ app.post('/api/admin/products', requireAdmin, (req, res) => {
     return res.status(400).json({ error: 'Name and price are required.' });
   }
 
+  // NEW: make sure price is actually a valid positive number
+  const parsedPrice = parseFloat(price);
+  if (isNaN(parsedPrice) || parsedPrice <= 0) {
+    return res.status(400).json({ error: 'Price must be a positive number.' });
+  }
+
+  // NEW: a reasonable cap on name length, so nothing absurd gets stored
+  if (name.trim().length === 0 || name.length > 100) {
+    return res.status(400).json({ error: 'Product name must be between 1 and 100 characters.' });
+  }
+
   const insert = db.prepare('INSERT INTO products (name, price, emoji) VALUES (?, ?, ?)');
-  const result = insert.run(name, parseFloat(price), emoji || '🛒');
+  const result = insert.run(name.trim(), parsedPrice, emoji || '🛒');
 
   res.json({ success: true, productId: result.lastInsertRowid });
 });
