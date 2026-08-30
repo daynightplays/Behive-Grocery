@@ -21,9 +21,19 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
+    is_admin INTEGER DEFAULT 0,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
   )
 `);
+
+// Since your database already existed before is_admin was added,
+// this safely adds the column if it's missing — and does nothing if it's already there.
+const userColumns = db.prepare("PRAGMA table_info(users)").all();
+const hasIsAdmin = userColumns.some(function(col) { return col.name === 'is_admin'; });
+if (!hasIsAdmin) {
+  db.exec('ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0');
+  console.log('Added is_admin column to existing users table.');
+}
 
 // NEW: orders table — one row per order placed
 // items_json stores the cart contents as text (a simple approach for a first version)

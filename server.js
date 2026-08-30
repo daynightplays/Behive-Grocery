@@ -141,6 +141,47 @@ app.get('/api/orders', (req, res) => {
   res.json(orders);
 });
 
+// NEW: a small reusable check — blocks the request unless the logged-in
+// user is an admin. Used before any admin-only route.
+function requireAdmin(req, res, next) {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'You must be logged in.' });
+  }
+
+  const user = db.prepare('SELECT is_admin FROM users WHERE id = ?').get(req.session.userId);
+
+  if (!user || user.is_admin !== 1) {
+    return res.status(403).json({ error: 'Admin access only.' });
+  }
+
+  next(); // means "okay, continue to the actual route"
+}
+
+// NEW: lets the admin page check "am I actually an admin?" before showing itself
+app.get('/api/admin/check', requireAdmin, (req, res) => {
+  res.json({ isAdmin: true });
+});
+
+// NEW: adds a new product — admin only
+app.post('/api/admin/products', requireAdmin, (req, res) => {
+  const { name, price, emoji } = req.body;
+
+  if (!name || !price) {
+    return res.status(400).json({ error: 'Name and price are required.' });
+  }
+
+  const insert = db.prepare('INSERT INTO products (name, price, emoji) VALUES (?, ?, ?)');
+  const result = insert.run(name, parseFloat(price), emoji || '🛒');
+
+  res.json({ success: true, productId: result.lastInsertRowid });
+});
+
+// NEW: deletes a product — admin only
+app.delete('/api/admin/products/:id', requireAdmin, (req, res) => {
+  db.prepare('DELETE FROM products WHERE id = ?').run(req.params.id);
+  res.json({ success: true });
+});
+
 // This actually starts the server, listening on port 3000
 app.listen(PORT, () => {
   console.log('Server is running at http://localhost:' + PORT);

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - FreshCart</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="logo">FreshCart Admin</div>
+    <a href="index.html" style="color: white;">← Back to site</a>
+  </header>
+
+  <div id="access-denied" class="hidden" style="padding: 40px; text-align: center;">
+    <h2>Access denied</h2>
+    <p>You must be logged in as an admin to view this page.</p>
+  </div>
+
+  <div id="admin-content" class="hidden" style="padding: 40px; max-width: 500px;">
+    <h2>Add a Product</h2>
+    <input type="text" id="new-name" placeholder="Product name">
+    <input type="number" id="new-price" placeholder="Price" step="0.01">
+    <input type="text" id="new-emoji" placeholder="Emoji (e.g. 🍎)">
+    <button onclick="addProduct()">Add Product</button>
+    <p id="admin-message"></p>
+
+    <h2 style="margin-top: 40px;">Current Products</h2>
+    <div id="admin-product-list"></div>
+  </div>
+
+  <script src="script.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

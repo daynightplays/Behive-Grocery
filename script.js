@@ -17,7 +17,7 @@ async function loadProducts() {
     card.innerHTML =
       '<div class="product-emoji">' + product.emoji + '</div>' +
       '<h3>' + product.name + '</h3>' +
-      '<p class="price">$' + product.price.toFixed(2) + '</p>' +
+      '<p class="price">₹' + product.price.toFixed(2) + '</p>' +
       '<button onclick="addToCart(\'' + product.name + '\', ' + product.price + ')">Add to Cart</button>';
 
     grid.appendChild(card);
@@ -67,14 +67,14 @@ function renderCart() {
 
     li.innerHTML =
       '<span>' + item.name + '</span>' +
-      '<span>$' + item.price.toFixed(2) +
+      '<span>₹' + item.price.toFixed(2) +
       ' <button class="remove-btn" onclick="removeFromCart(' + i + ')">✕</button></span>';
 
     cartItemsList.appendChild(li);
     total = total + item.price;
   }
 
-  totalDisplay.textContent = 'Total: $' + total.toFixed(2);
+  totalDisplay.textContent = 'Total: ₹' + total.toFixed(2);
 }
 
 function toggleCart() {
@@ -256,7 +256,7 @@ async function loadOrders() {
     card.innerHTML =
       '<strong>Order #' + order.id + '</strong> — <span class="order-status">' + order.status + '</span><br>' +
       'Items: ' + itemNames + '<br>' +
-      'Total: $' + order.total.toFixed(2) + '<br>' +
+      'Total: ₹' + order.total.toFixed(2) + '<br>' +
       'Deliver to: ' + order.delivery_address;
 
     list.appendChild(card);
