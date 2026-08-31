@@ -47,11 +47,21 @@ app.get('/api/products', (req, res) => {
 
 // NEW: signup route — creates a new account
 app.post('/api/signup', async (req, res) => {
-  const { email, password } = req.body;
+  const { name, phone, email, password } = req.body;
 
-  // Basic check: make sure both fields were actually sent
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required.' });
+  // Basic check: make sure all fields were actually sent
+  if (!name || !phone || !email || !password) {
+    return res.status(400).json({ error: 'Name, phone, email, and password are all required.' });
+  }
+
+  if (name.trim().length === 0 || name.length > 100) {
+    return res.status(400).json({ error: 'Please enter a valid name.' });
+  }
+
+  // NEW: a simple check for a 10-digit Indian phone number (with optional +91)
+  const phonePattern = /^(\+91)?[6-9]\d{9}$/;
+  if (!phonePattern.test(phone.replace(/\s/g, ''))) {
+    return res.status(400).json({ error: 'Please enter a valid 10-digit phone number.' });
   }
 
   // NEW: a simple pattern check — makes sure the email at least LOOKS like
@@ -70,8 +80,8 @@ app.post('/api/signup', async (req, res) => {
     // Scramble the password — 10 is the "cost factor," a standard safe default
     const passwordHash = await bcrypt.hash(password, 10);
 
-    const insert = db.prepare('INSERT INTO users (email, password_hash) VALUES (?, ?)');
-    insert.run(email, passwordHash);
+    const insert = db.prepare('INSERT INTO users (name, phone, email, password_hash) VALUES (?, ?, ?, ?)');
+    insert.run(name.trim(), phone.trim(), email, passwordHash);
 
     res.json({ success: true, message: 'Account created!' });
   } catch (error) {
@@ -79,6 +89,7 @@ app.post('/api/signup', async (req, res) => {
     if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
       res.status(400).json({ error: 'An account with that email already exists.' });
     } else {
+      console.error('Signup error:', error.message); // NEW: so we can actually see what broke
       res.status(500).json({ error: 'Something went wrong creating the account.' });
     }
   }
@@ -106,8 +117,9 @@ app.post('/api/login', loginLimiter, async (req, res) => {
   // Save the user's info into their session — this is what "remembers" them
   req.session.userId = user.id;
   req.session.userEmail = user.email;
+  req.session.userName = user.name;
 
-  res.json({ success: true, message: 'Logged in!', email: user.email });
+  res.json({ success: true, message: 'Logged in!', email: user.email, name: user.name });
 });
 
 // NEW: logout route — clears the session
@@ -120,7 +132,7 @@ app.post('/api/logout', (req, res) => {
 // NEW: lets the page check "am I currently logged in?" when it loads
 app.get('/api/me', (req, res) => {
   if (req.session.userId) {
-    res.json({ loggedIn: true, email: req.session.userEmail });
+    res.json({ loggedIn: true, email: req.session.userEmail, name: req.session.userName });
   } else {
     res.json({ loggedIn: false });
   }
@@ -236,7 +248,7 @@ app.delete('/api/admin/products/:id', requireAdmin, (req, res) => {
 // NEW: lets an admin see ALL orders from ALL customers (not just their own)
 app.get('/api/admin/orders', requireAdmin, (req, res) => {
   const orders = db.prepare(`
-    SELECT orders.*, users.email AS customer_email
+    SELECT orders.*, users.name AS customer_name, users.email AS customer_email, users.phone AS customer_phone
     FROM orders
     JOIN users ON orders.user_id = users.id
     ORDER BY orders.created_at DESC

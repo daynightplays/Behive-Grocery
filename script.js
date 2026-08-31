@@ -247,6 +247,8 @@ function toggleAuth() {
 
 // NEW: sends the signup form's email/password to the server
 async function signup() {
+  const name = document.getElementById('signup-name').value;
+  const phone = document.getElementById('signup-phone').value;
   const email = document.getElementById('signup-email').value;
   const password = document.getElementById('signup-password').value;
   const messageBox = document.getElementById('auth-message');
@@ -254,7 +256,7 @@ async function signup() {
   const response = await fetch('/api/signup', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: email, password: password })
+    body: JSON.stringify({ name: name, phone: phone, email: email, password: password })
   });
 
   const result = await response.json();
@@ -262,6 +264,10 @@ async function signup() {
   if (response.ok) {
     messageBox.textContent = result.message + ' You can log in now.';
     messageBox.style.color = 'green';
+    document.getElementById('signup-name').value = '';
+    document.getElementById('signup-phone').value = '';
+    document.getElementById('signup-email').value = '';
+    document.getElementById('signup-password').value = '';
   } else {
     messageBox.textContent = result.error;
     messageBox.style.color = 'red';
@@ -284,7 +290,7 @@ async function login() {
 
   if (response.ok) {
     messageBox.textContent = '';
-    updateAuthUI(true, result.email);
+    updateAuthUI(true, result.name);
     toggleAuth(); // close the panel after successful login
   } else {
     messageBox.textContent = result.error;
@@ -312,7 +318,7 @@ function showSignup() {
 }
 
 // UPDATED: also shows/hides the "My Orders" link based on login state
-function updateAuthUI(loggedIn, email) {
+function updateAuthUI(loggedIn, name) {
   const authLink = document.getElementById('auth-link');
   const ordersLink = document.getElementById('orders-link');
 
@@ -321,7 +327,7 @@ function updateAuthUI(loggedIn, email) {
   if (!authLink) return;
 
   if (loggedIn) {
-    authLink.textContent = 'Hi, ' + email + ' (Log out)';
+    authLink.textContent = 'Hi, ' + (name || 'there') + ' (Log out)';
     authLink.onclick = function() { logout(); return false; };
     if (ordersLink) ordersLink.classList.remove('hidden');
   } else {
@@ -379,5 +385,5 @@ async function loadOrders() {
 async function checkLoginStatus() {
   const response = await fetch('/api/me');
   const result = await response.json();
-  updateAuthUI(result.loggedIn, result.email);
+  updateAuthUI(result.loggedIn, result.name);
 }

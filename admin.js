@@ -154,7 +154,7 @@ async function loadAdminOrders() {
     row.style.padding = '10px 0';
     row.style.borderBottom = '1px solid #eee';
     row.innerHTML =
-      '<strong>Order #' + order.id + '</strong> — ' + order.customer_email + '<br>' +
+      '<strong>Order #' + order.id + '</strong> — ' + (order.customer_name || 'N/A') + ' (' + order.customer_phone + ') — ' + order.customer_email + '<br>' +
       'Items: ' + itemNames + '<br>' +
       'Total: ₹' + order.total.toFixed(2) + '<br>' +
       'Deliver to: ' + order.delivery_address + '<br>' +

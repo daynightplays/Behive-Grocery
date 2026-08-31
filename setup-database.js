@@ -29,12 +29,27 @@ if (!hasImageUrl) {
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT,
+    phone TEXT,
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
     is_admin INTEGER DEFAULT 0,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
   )
 `);
+
+// Safe migration for databases that already existed before name/phone were added
+const userTableColumns = db.prepare("PRAGMA table_info(users)").all();
+const hasName = userTableColumns.some(function(col) { return col.name === 'name'; });
+if (!hasName) {
+  db.exec('ALTER TABLE users ADD COLUMN name TEXT');
+  console.log('Added name column to existing users table.');
+}
+const hasPhone = userTableColumns.some(function(col) { return col.name === 'phone'; });
+if (!hasPhone) {
+  db.exec('ALTER TABLE users ADD COLUMN phone TEXT');
+  console.log('Added phone column to existing users table.');
+}
 
 // Since your database already existed before is_admin was added,
 // this safely adds the column if it's missing — and does nothing if it's already there.
