@@ -63,6 +63,64 @@ function handleSearchInput() {
 }
 
 // NEW: finds how many of a given product are currently in the cart
+let variantCardsData = {}; // stores each variant card's product list, keyed by its card id, so selectVariant() can look things up
+
+// NEW: builds one card for a group of size variants (e.g. Lays Chips 50g/150g),
+// with buttons to switch between sizes — cheapest size shown by default
+function buildVariantCardHTML(groupName, variants) {
+  variants.sort(function(a, b) { return a.price - b.price; });
+  const selected = variants[0];
+  const cardId = 'variant-' + groupName.replace(/[^a-zA-Z0-9]/g, '-');
+  variantCardsData[cardId] = variants;
+
+  const options = variants.map(function(v) {
+    return '<option value="' + v.id + '"' + (v.id === selected.id ? ' selected' : '') + '>' + (v.unit || 'Option') + '</option>';
+  }).join('');
+
+  const unitDropdown =
+    '<select class="unit-dropdown" onchange="selectVariant(\'' + cardId + '\', parseInt(this.value))">' +
+      options +
+    '</select>';
+
+  const visual = selected.image_url
+    ? '<img src="' + selected.image_url + '" class="product-image" alt="' + groupName + '">'
+    : '<div class="product-emoji">' + selected.emoji + '</div>';
+
+  return (
+    '<div class="product-card" id="' + cardId + '">' +
+      '<div class="variant-image-wrap">' + visual + '</div>' +
+      '<h3>' + groupName + '</h3>' +
+      unitDropdown +
+      '<p class="price" id="price-' + cardId + '">₹' + selected.price.toFixed(2) + '</p>' +
+      '<div class="variant-qty-container" id="qty-container-' + selected.id + '">' + qtyControlHTML(selected) + '</div>' +
+    '</div>'
+  );
+}
+
+// NEW: runs when someone taps a different size button on a variant card —
+// updates the price, image, and cart control to match that size
+function selectVariant(cardId, productId) {
+  const variants = variantCardsData[cardId];
+  const product = variants.find(function(v) { return v.id === productId; });
+  if (!product) return;
+
+  document.getElementById('price-' + cardId).textContent = '₹' + product.price.toFixed(2);
+
+  const card = document.getElementById(cardId);
+
+  const imgWrap = card.querySelector('.variant-image-wrap');
+  imgWrap.innerHTML = product.image_url
+    ? '<img src="' + product.image_url + '" class="product-image" alt="">'
+    : '<div class="product-emoji">' + product.emoji + '</div>';
+
+  // The quantity control needs to now represent THIS size, not the old one —
+  // we rename its id so future clicks/redraws target the right product
+  const qtyContainer = card.querySelector('.variant-qty-container');
+  qtyContainer.id = 'qty-container-' + productId;
+  qtyContainer.innerHTML = qtyControlHTML(product);
+}
+
+// NEW: finds how many of a given product are currently in the cart
 function getQty(productId) {
   const item = cart.find(function(i) { return i.id === productId; });
   return item ? item.qty : 0;
@@ -129,7 +187,22 @@ async function loadProducts() {
     row.className = 'product-grid';
 
     const items = grouped[filterCategory] || [];
+
+    // NEW: separate items into "has size variants" vs "standalone product"
+    const variantGroups = {};
+    const standaloneItems = [];
     items.forEach(function(product) {
+      if (product.variant_group) {
+        if (!variantGroups[product.variant_group]) {
+          variantGroups[product.variant_group] = [];
+        }
+        variantGroups[product.variant_group].push(product);
+      } else {
+        standaloneItems.push(product);
+      }
+    });
+
+    standaloneItems.forEach(function(product) {
       const card = document.createElement('div');
       card.className = 'product-card';
       const visual = product.image_url
@@ -141,6 +214,11 @@ async function loadProducts() {
         '<p class="price">₹' + product.price.toFixed(2) + '</p>' +
         '<div id="qty-container-' + product.id + '">' + qtyControlHTML(product) + '</div>';
       row.appendChild(card);
+    });
+
+    // NEW: one card per variant group, with a size selector instead of separate cards
+    Object.keys(variantGroups).forEach(function(groupName) {
+      row.insertAdjacentHTML('beforeend', buildVariantCardHTML(groupName, variantGroups[groupName]));
     });
 
     section.appendChild(row);

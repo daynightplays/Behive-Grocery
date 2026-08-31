@@ -21,7 +21,24 @@
   <div id="admin-content" class="hidden" style="padding: 40px; max-width: 700px;">
     <h2>Add a Product</h2>
     <input type="text" id="new-name" placeholder="Product name">
+    <select id="new-unit-select" onchange="toggleCustomUnitInput()">
+      <option value="">-- Size/Unit (optional) --</option>
+      <option value="100g">100g</option>
+      <option value="250g">250g</option>
+      <option value="500g">500g</option>
+      <option value="1kg">1kg</option>
+      <option value="250ml">250ml</option>
+      <option value="500ml">500ml</option>
+      <option value="1L">1L</option>
+      <option value="2L">2L</option>
+      <option value="1 piece">1 piece</option>
+      <option value="Pack of 6">Pack of 6</option>
+      <option value="Pack of 12">Pack of 12</option>
+      <option value="__custom__">Custom...</option>
+    </select>
+    <input type="text" id="new-unit-custom" placeholder="Enter custom size/unit" class="hidden">
     <input type="number" id="new-price" placeholder="Price" step="0.01">
+    <input type="text" id="new-variant-group" placeholder="Links sizes together (e.g. 'Lays Chips') — leave blank if this product has no size options">
     <input type="text" id="new-emoji" placeholder="Emoji (e.g. 🍎) — used if no photo is uploaded">
     <label class="upload-label" for="new-photo">📷 Upload Product Photo</label>
     <input type="file" id="new-photo" accept="image/*" onchange="showPhotoPreview()">

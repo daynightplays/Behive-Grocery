@@ -67,7 +67,11 @@ async function loadAdminProducts() {
         const row = document.createElement('div');
         row.className = 'admin-product-row';
         row.innerHTML =
-          '<span class="admin-product-info">' + product.emoji + ' <strong>' + product.name + '</strong> — ₹' + product.price.toFixed(2) + '</span>' +
+          '<span class="admin-product-info">' + product.emoji + ' <strong>' + product.name + '</strong>' +
+          (product.unit ? ' (' + product.unit + ')' : '') +
+          ' — ₹' + product.price.toFixed(2) +
+          (product.variant_group ? ' <span class="variant-tag">linked: ' + product.variant_group + '</span>' : '') +
+          '</span>' +
           '<button onclick="deleteProduct(' + product.id + ')" class="admin-delete-btn">Delete</button>';
         list.appendChild(row);
       });
@@ -133,7 +137,17 @@ function toggleNewCategoryInput() {
 }
 
 // Sends the new product form to the server
-// NEW: shows a small preview of the selected photo before uploading
+// NEW: shows/hides the custom unit text box based on dropdown choice
+function toggleCustomUnitInput() {
+  const select = document.getElementById('new-unit-select');
+  const customInput = document.getElementById('new-unit-custom');
+
+  if (select.value === '__custom__') {
+    customInput.classList.remove('hidden');
+  } else {
+    customInput.classList.add('hidden');
+  }
+}
 function showPhotoPreview() {
   const fileInput = document.getElementById('new-photo');
   const preview = document.getElementById('photo-preview');
@@ -154,6 +168,11 @@ async function addProduct() {
   const name = document.getElementById('new-name').value;
   const price = document.getElementById('new-price').value;
   const emoji = document.getElementById('new-emoji').value;
+  const unitSelect = document.getElementById('new-unit-select');
+  const unit = unitSelect.value === '__custom__'
+    ? document.getElementById('new-unit-custom').value
+    : unitSelect.value;
+  const variantGroup = document.getElementById('new-variant-group').value;
   const imageUrl = document.getElementById('new-image-url').value;
   const photoFile = document.getElementById('new-photo').files[0];
   const messageBox = document.getElementById('admin-message');
@@ -174,6 +193,8 @@ async function addProduct() {
   formData.append('emoji', emoji);
   formData.append('category', category);
   formData.append('imageUrl', imageUrl);
+  formData.append('unit', unit);
+  formData.append('variantGroup', variantGroup);
   if (photoFile) {
     formData.append('photo', photoFile);
   }
@@ -193,6 +214,10 @@ async function addProduct() {
     document.getElementById('new-name').value = '';
     document.getElementById('new-price').value = '';
     document.getElementById('new-emoji').value = '';
+    document.getElementById('new-unit-select').value = '';
+    document.getElementById('new-unit-custom').value = '';
+    document.getElementById('new-unit-custom').classList.add('hidden');
+    document.getElementById('new-variant-group').value = '';
     document.getElementById('new-image-url').value = '';
     document.getElementById('new-photo').value = '';
     document.getElementById('photo-preview').classList.add('hidden');

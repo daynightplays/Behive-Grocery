@@ -730,3 +730,24 @@ footer a {
   font-size: 13px;
 }
 
+/* NEW: variant tag shown in admin product list */
+.variant-tag {
+  font-size: 11px;
+  color: #888;
+  margin-left: 6px;
+  font-style: italic;
+}
+
+/* NEW: size/unit dropdown on a variant product card */
+.unit-dropdown {
+  width: 100%;
+  padding: 6px 8px;
+  margin: 8px 0;
+  border: 1px solid #2e7d32;
+  border-radius: 6px;
+  color: #2e7d32;
+  font-weight: bold;
+  font-size: 13px;
+  background-color: white;
+}
+

@@ -12,9 +12,24 @@ db.exec(`
     price REAL NOT NULL,
     emoji TEXT,
     category TEXT DEFAULT 'Other',
-    image_url TEXT
+    image_url TEXT,
+    unit TEXT,
+    variant_group TEXT
   )
 `);
+
+// NEW: safe migration for unit/variant_group, same pattern as before
+const variantColumns = db.prepare("PRAGMA table_info(products)").all();
+const hasUnit = variantColumns.some(function(col) { return col.name === 'unit'; });
+if (!hasUnit) {
+  db.exec('ALTER TABLE products ADD COLUMN unit TEXT');
+  console.log('Added unit column to existing products table.');
+}
+const hasVariantGroup = variantColumns.some(function(col) { return col.name === 'variant_group'; });
+if (!hasVariantGroup) {
+  db.exec('ALTER TABLE products ADD COLUMN variant_group TEXT');
+  console.log('Added variant_group column to existing products table.');
+}
 
 // Same safe-migration pattern as category and is_admin before it
 const imageColumns = db.prepare("PRAGMA table_info(products)").all();

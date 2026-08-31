@@ -243,7 +243,7 @@ app.get('/api/admin/check', requireAdmin, (req, res) => {
 // NEW: upload.single('photo') is Multer middleware — it processes the incoming
 // file (if any), saves it to the uploads/ folder, and makes it available as req.file
 app.post('/api/admin/products', requireAdmin, upload.single('photo'), (req, res) => {
-  const { name, price, emoji, category } = req.body;
+  const { name, price, emoji, category, unit, variantGroup } = req.body;
 
   if (!name || !price) {
     return res.status(400).json({ error: 'Name and price are required.' });
@@ -264,8 +264,16 @@ app.post('/api/admin/products', requireAdmin, upload.single('photo'), (req, res)
   // Otherwise, fall back to a pasted URL if one was given, or nothing.
   const imageUrl = req.file ? '/uploads/' + req.file.filename : (req.body.imageUrl || null);
 
-  const insert = db.prepare('INSERT INTO products (name, price, emoji, category, image_url) VALUES (?, ?, ?, ?, ?)');
-  const result = insert.run(name.trim(), parsedPrice, emoji || '🛒', category || 'Other', imageUrl);
+  const insert = db.prepare('INSERT INTO products (name, price, emoji, category, image_url, unit, variant_group) VALUES (?, ?, ?, ?, ?, ?, ?)');
+  const result = insert.run(
+    name.trim(),
+    parsedPrice,
+    emoji || '🛒',
+    category || 'Other',
+    imageUrl,
+    unit ? unit.trim() : null,
+    variantGroup && variantGroup.trim() ? variantGroup.trim() : null
+  );
 
   res.json({ success: true, productId: result.lastInsertRowid });
 });
