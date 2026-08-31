@@ -6,7 +6,19 @@ async function checkAdminAccess() {
   if (response.ok) {
     document.getElementById('admin-content').classList.remove('hidden');
     loadAdminProducts();
-    loadAdminOrders();
+
+    // NEW: only show order management on the main page — a category detail
+    // view should stay focused on just that category's products
+    const urlParams = new URLSearchParams(window.location.search);
+    const isViewingOneCategory = urlParams.has('category');
+    const ordersSection = document.getElementById('admin-orders-section');
+
+    if (isViewingOneCategory) {
+      ordersSection.classList.add('hidden');
+    } else {
+      ordersSection.classList.remove('hidden');
+      loadAdminOrders();
+    }
   } else {
     document.getElementById('access-denied').classList.remove('hidden');
   }
@@ -20,16 +32,64 @@ async function loadAdminProducts() {
   const list = document.getElementById('admin-product-list');
   list.innerHTML = '';
 
+  // Group products by category
+  const grouped = {};
   products.forEach(function(product) {
-    const row = document.createElement('div');
-    row.style.padding = '8px 0';
-    row.style.borderBottom = '1px solid #eee';
-    row.innerHTML =
-      product.emoji + ' <strong>' + product.name + '</strong> — ₹' + product.price.toFixed(2) +
-      ' (' + product.category + ')' +
-      ' <button onclick="deleteProduct(' + product.id + ')" style="background:#c62828; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;">Delete</button>';
-    list.appendChild(row);
+    const cat = product.category || 'Other';
+    if (!grouped[cat]) {
+      grouped[cat] = [];
+    }
+    grouped[cat].push(product);
   });
+
+  // NEW: check if we're viewing one specific category
+  const urlParams = new URLSearchParams(window.location.search);
+  const filterCategory = urlParams.get('category');
+
+  if (filterCategory) {
+    // DETAIL VIEW: just this category's products, with a back link
+    const backLink = document.createElement('a');
+    backLink.href = 'admin.html';
+    backLink.textContent = '← All Categories';
+    backLink.className = 'back-link';
+    list.appendChild(backLink);
+
+    const heading = document.createElement('h3');
+    heading.className = 'admin-category-heading';
+    heading.textContent = filterCategory;
+    list.appendChild(heading);
+
+    const items = grouped[filterCategory] || [];
+    if (items.length === 0) {
+      list.innerHTML += '<p>No products in this category yet.</p>';
+    } else {
+      items.forEach(function(product) {
+        const row = document.createElement('div');
+        row.className = 'admin-product-row';
+        row.innerHTML =
+          '<span class="admin-product-info">' + product.emoji + ' <strong>' + product.name + '</strong> — ₹' + product.price.toFixed(2) + '</span>' +
+          '<button onclick="deleteProduct(' + product.id + ')" class="admin-delete-btn">Delete</button>';
+        list.appendChild(row);
+      });
+    }
+
+  } else {
+    // LIST VIEW: category tiles, click one to see its products
+    const tileGrid = document.createElement('div');
+    tileGrid.className = 'admin-category-tile-grid';
+
+    Object.keys(grouped).forEach(function(categoryName) {
+      const tile = document.createElement('a');
+      tile.className = 'admin-category-tile';
+      tile.href = 'admin.html?category=' + encodeURIComponent(categoryName);
+      tile.innerHTML =
+        '<div class="admin-tile-name">' + categoryName + '</div>' +
+        '<div class="admin-tile-count">' + grouped[categoryName].length + ' product' + (grouped[categoryName].length !== 1 ? 's' : '') + '</div>';
+      tileGrid.appendChild(tile);
+    });
+
+    list.appendChild(tileGrid);
+  }
 
   // NEW: rebuild the category dropdown from whatever categories currently exist,
   // so it always reflects real data instead of a fixed hardcoded list
@@ -73,11 +133,29 @@ function toggleNewCategoryInput() {
 }
 
 // Sends the new product form to the server
+// NEW: shows a small preview of the selected photo before uploading
+function showPhotoPreview() {
+  const fileInput = document.getElementById('new-photo');
+  const preview = document.getElementById('photo-preview');
+
+  if (fileInput.files && fileInput.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      preview.src = e.target.result;
+      preview.classList.remove('hidden');
+    };
+    reader.readAsDataURL(fileInput.files[0]);
+  } else {
+    preview.classList.add('hidden');
+  }
+}
+
 async function addProduct() {
   const name = document.getElementById('new-name').value;
   const price = document.getElementById('new-price').value;
   const emoji = document.getElementById('new-emoji').value;
   const imageUrl = document.getElementById('new-image-url').value;
+  const photoFile = document.getElementById('new-photo').files[0];
   const messageBox = document.getElementById('admin-message');
 
   // NEW: figure out which category value to actually use —
@@ -88,10 +166,23 @@ async function addProduct() {
     category = document.getElementById('new-category-input').value;
   }
 
+  // NEW: FormData is required when sending an actual file — it lets the
+  // browser package text fields AND a file together in one request
+  const formData = new FormData();
+  formData.append('name', name);
+  formData.append('price', price);
+  formData.append('emoji', emoji);
+  formData.append('category', category);
+  formData.append('imageUrl', imageUrl);
+  if (photoFile) {
+    formData.append('photo', photoFile);
+  }
+
   const response = await fetch('/api/admin/products', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: name, price: price, emoji: emoji, category: category, imageUrl: imageUrl })
+    body: formData
+    // NOTE: no Content-Type header here — the browser sets it automatically
+    // for FormData, including the special boundary marker it needs
   });
 
   const result = await response.json();
@@ -103,6 +194,8 @@ async function addProduct() {
     document.getElementById('new-price').value = '';
     document.getElementById('new-emoji').value = '';
     document.getElementById('new-image-url').value = '';
+    document.getElementById('new-photo').value = '';
+    document.getElementById('photo-preview').classList.add('hidden');
     document.getElementById('new-category-input').value = '';
     document.getElementById('category-select').value = '';
     toggleNewCategoryInput();

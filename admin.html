@@ -22,8 +22,11 @@
     <h2>Add a Product</h2>
     <input type="text" id="new-name" placeholder="Product name">
     <input type="number" id="new-price" placeholder="Price" step="0.01">
-    <input type="text" id="new-emoji" placeholder="Emoji (e.g. 🍎)">
-    <input type="text" id="new-image-url" placeholder="Image URL (optional)">
+    <input type="text" id="new-emoji" placeholder="Emoji (e.g. 🍎) — used if no photo is uploaded">
+    <label class="upload-label" for="new-photo">📷 Upload Product Photo</label>
+    <input type="file" id="new-photo" accept="image/*" onchange="showPhotoPreview()">
+    <img id="photo-preview" class="hidden" alt="Preview">
+    <input type="text" id="new-image-url" placeholder="Or paste an image URL (optional)">
     <select id="category-select" onchange="toggleNewCategoryInput()">
       <option value="">-- Select category --</option>
       <option value="__new__">+ Add a new category</option>
@@ -35,8 +38,10 @@
     <h2 style="margin-top: 40px;">Current Products</h2>
     <div id="admin-product-list"></div>
 
-    <h2 style="margin-top: 40px;">All Orders</h2>
-    <div id="admin-orders-list"></div>
+    <div id="admin-orders-section">
+      <h2 style="margin-top: 40px;">All Orders</h2>
+      <div id="admin-orders-list"></div>
+    </div>
   </div>
 
   <script src="script.js"></script>

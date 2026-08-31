@@ -79,6 +79,35 @@ select {
   font-family: Arial, sans-serif;
 }
 
+.upload-label {
+  display: block;
+  background-color: #f5f6f8;
+  border: 1px dashed #999;
+  border-radius: 6px;
+  padding: 12px;
+  text-align: center;
+  cursor: pointer;
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.upload-label:hover {
+  background-color: #eee;
+}
+
+#new-photo {
+  display: none;
+}
+
+#photo-preview {
+  display: block;
+  max-width: 120px;
+  max-height: 120px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  border: 1px solid #ddd;
+}
+
 .cart-panel textarea {
   display: block;
   width: 100%;
@@ -638,5 +667,66 @@ footer a {
   padding: 10px 24px;
   border-radius: 6px;
   text-decoration: none;
+}
+
+/* NEW: admin panel — category tiles (list view) and detail rows (single category view) */
+.admin-category-tile-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.admin-category-tile {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 16px 20px;
+  min-width: 160px;
+  text-decoration: none;
+  color: #333;
+  transition: box-shadow 0.15s ease;
+}
+
+.admin-category-tile:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+
+.admin-tile-name {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.admin-tile-count {
+  font-size: 13px;
+  color: #777;
+}
+
+.admin-category-heading {
+  font-size: 16px;
+  color: #2e7d32;
+  border-bottom: 2px solid #e8f5e9;
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+}
+
+.admin-product-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.admin-product-info {
+  font-size: 14px;
+}
+
+.admin-delete-btn {
+  background-color: #c62828;
+  color: white;
+  border: none;
+  padding: 5px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
 }
 

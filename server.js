@@ -6,10 +6,35 @@ const Database = require('better-sqlite3');
 const bcrypt = require('bcrypt');
 const session = require('express-session');
 const rateLimit = require('express-rate-limit');
+const multer = require('multer');
+const path = require('path');
 
 const app = express();
 const PORT = 3000;
 const db = new Database('store.db');
+
+// NEW: sets up where uploaded product photos get saved, and gives each one
+// a unique filename so two different uploads never overwrite each other
+const uploadStorage = multer.diskStorage({
+  destination: 'uploads/',
+  filename: function(req, file, cb) {
+    const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1e9) + path.extname(file.originalname);
+    cb(null, uniqueName);
+  }
+});
+
+const upload = multer({
+  storage: uploadStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max per photo — keeps things reasonable
+  fileFilter: function(req, file, cb) {
+    // Only allow actual image files, not random file types
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed.'));
+    }
+  }
+});
 
 // NEW: limits login attempts — max 10 tries per 15 minutes, per visitor.
 // This makes it impractical for someone to "guess" a password by brute force.
@@ -215,8 +240,10 @@ app.get('/api/admin/check', requireAdmin, (req, res) => {
 });
 
 // NEW: adds a new product — admin only
-app.post('/api/admin/products', requireAdmin, (req, res) => {
-  const { name, price, emoji, category, imageUrl } = req.body;
+// NEW: upload.single('photo') is Multer middleware — it processes the incoming
+// file (if any), saves it to the uploads/ folder, and makes it available as req.file
+app.post('/api/admin/products', requireAdmin, upload.single('photo'), (req, res) => {
+  const { name, price, emoji, category } = req.body;
 
   if (!name || !price) {
     return res.status(400).json({ error: 'Name and price are required.' });
@@ -233,8 +260,12 @@ app.post('/api/admin/products', requireAdmin, (req, res) => {
     return res.status(400).json({ error: 'Product name must be between 1 and 100 characters.' });
   }
 
+  // If a photo was uploaded, its saved path becomes the image URL.
+  // Otherwise, fall back to a pasted URL if one was given, or nothing.
+  const imageUrl = req.file ? '/uploads/' + req.file.filename : (req.body.imageUrl || null);
+
   const insert = db.prepare('INSERT INTO products (name, price, emoji, category, image_url) VALUES (?, ?, ?, ?, ?)');
-  const result = insert.run(name.trim(), parsedPrice, emoji || '🛒', category || 'Other', imageUrl || null);
+  const result = insert.run(name.trim(), parsedPrice, emoji || '🛒', category || 'Other', imageUrl);
 
   res.json({ success: true, productId: result.lastInsertRowid });
 });
