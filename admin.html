@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin - FreshCart</title>
+  <title>Admin - Buyhive Store</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
   <header class="site-header">
-    <div class="logo">FreshCart Admin</div>
+    <div class="logo">Buyhive Store Admin</div>
     <a href="index.html" style="color: white;">← Back to site</a>
   </header>
 
@@ -23,6 +23,12 @@
     <input type="text" id="new-name" placeholder="Product name">
     <input type="number" id="new-price" placeholder="Price" step="0.01">
     <input type="text" id="new-emoji" placeholder="Emoji (e.g. 🍎)">
+    <input type="text" id="new-image-url" placeholder="Image URL (optional)">
+    <select id="category-select" onchange="toggleNewCategoryInput()">
+      <option value="">-- Select category --</option>
+      <option value="__new__">+ Add a new category</option>
+    </select>
+    <input type="text" id="new-category-input" placeholder="New category name" class="hidden">
     <button onclick="addProduct()">Add Product</button>
     <p id="admin-message"></p>
 

@@ -133,7 +133,7 @@ app.post('/api/orders', (req, res) => {
     return res.status(401).json({ error: 'You must be logged in to place an order.' });
   }
 
-  const { items, total, deliveryAddress } = req.body;
+  const { items, deliveryAddress } = req.body;
 
   if (!deliveryAddress || deliveryAddress.trim() === '') {
     return res.status(400).json({ error: 'Delivery address is required.' });
@@ -143,15 +143,29 @@ app.post('/api/orders', (req, res) => {
     return res.status(400).json({ error: 'Your cart is empty.' });
   }
 
+  // NEW: the server calculates the subtotal and delivery fee itself,
+  // rather than trusting whatever total the browser sends — this way
+  // nobody can tamper with the order total by editing the request.
+  const FREE_DELIVERY_THRESHOLD = 149;
+  const DELIVERY_FEE = 20;
+
+  let subtotal = 0;
+  items.forEach(function(item) {
+    subtotal += item.price * item.qty;
+  });
+
+  const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
+  const finalTotal = subtotal + deliveryFee;
+
   const insert = db.prepare(
-    'INSERT INTO orders (user_id, items_json, total, delivery_address) VALUES (?, ?, ?, ?)'
+    'INSERT INTO orders (user_id, items_json, total, delivery_fee, delivery_address) VALUES (?, ?, ?, ?, ?)'
   );
 
   // JSON.stringify turns the items array into a text string so it can be
   // stored in a single database column (SQLite doesn't store arrays directly)
-  const result = insert.run(req.session.userId, JSON.stringify(items), total, deliveryAddress);
+  const result = insert.run(req.session.userId, JSON.stringify(items), finalTotal, deliveryFee, deliveryAddress);
 
-  res.json({ success: true, orderId: result.lastInsertRowid });
+  res.json({ success: true, orderId: result.lastInsertRowid, deliveryFee: deliveryFee, total: finalTotal });
 });
 
 // NEW: fetches the logged-in user's own past orders — never anyone else's
@@ -190,7 +204,7 @@ app.get('/api/admin/check', requireAdmin, (req, res) => {
 
 // NEW: adds a new product — admin only
 app.post('/api/admin/products', requireAdmin, (req, res) => {
-  const { name, price, emoji } = req.body;
+  const { name, price, emoji, category, imageUrl } = req.body;
 
   if (!name || !price) {
     return res.status(400).json({ error: 'Name and price are required.' });
@@ -207,8 +221,8 @@ app.post('/api/admin/products', requireAdmin, (req, res) => {
     return res.status(400).json({ error: 'Product name must be between 1 and 100 characters.' });
   }
 
-  const insert = db.prepare('INSERT INTO products (name, price, emoji) VALUES (?, ?, ?)');
-  const result = insert.run(name.trim(), parsedPrice, emoji || '🛒');
+  const insert = db.prepare('INSERT INTO products (name, price, emoji, category, image_url) VALUES (?, ?, ?, ?, ?)');
+  const result = insert.run(name.trim(), parsedPrice, emoji || '🛒', category || 'Other', imageUrl || null);
 
   res.json({ success: true, productId: result.lastInsertRowid });
 });

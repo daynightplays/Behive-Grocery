@@ -10,9 +10,19 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     price REAL NOT NULL,
-    emoji TEXT
+    emoji TEXT,
+    category TEXT DEFAULT 'Other',
+    image_url TEXT
   )
 `);
+
+// Same safe-migration pattern as category and is_admin before it
+const imageColumns = db.prepare("PRAGMA table_info(products)").all();
+const hasImageUrl = imageColumns.some(function(col) { return col.name === 'image_url'; });
+if (!hasImageUrl) {
+  db.exec('ALTER TABLE products ADD COLUMN image_url TEXT');
+  console.log('Added image_url column to existing products table.');
+}
 
 // NEW: users table — stores accounts
 // password_hash holds a scrambled version of the password, NEVER the real one
@@ -43,11 +53,20 @@ db.exec(`
     user_id INTEGER NOT NULL,
     items_json TEXT NOT NULL,
     total REAL NOT NULL,
+    delivery_fee REAL DEFAULT 0,
     delivery_address TEXT NOT NULL,
     status TEXT DEFAULT 'Placed',
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
   )
 `);
+
+// Same safe-migration pattern used for other columns added after the table already existed
+const orderColumns = db.prepare("PRAGMA table_info(orders)").all();
+const hasDeliveryFee = orderColumns.some(function(col) { return col.name === 'delivery_fee'; });
+if (!hasDeliveryFee) {
+  db.exec('ALTER TABLE orders ADD COLUMN delivery_fee REAL DEFAULT 0');
+  console.log('Added delivery_fee column to existing orders table.');
+}
 
 const existingCount = db.prepare('SELECT COUNT(*) AS count FROM products').get();
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Buyhive Store - Grocery Delivery</title>
+  <title>Search - Buyhive Store</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,9 +11,7 @@
   <header class="site-header">
     <a href="index.html" class="logo">Buyhive Store</a>
     <nav>
-      <a href="#products">Shop</a>
-      <a href="#about">About</a>
-      <a href="#contact">Contact</a>
+      <a href="index.html">Shop</a>
     </nav>
     <a href="#" onclick="toggleAuth(); return false;" id="auth-link">Sign Up / Log In</a>
     <a href="#" onclick="toggleOrders(); return false;" id="orders-link" class="hidden">My Orders</a>
@@ -50,29 +48,17 @@
     <p id="auth-message"></p>
   </div>
 
-  <section class="hero">
-    <h1>Groceries delivered to your door</h1>
-    <p>Fresh produce, pantry staples, and more — order in minutes.</p>
-    <button>Start Shopping</button>
+  <section class="products">
+    <h2 id="search-results-title">Search results</h2>
+    <div class="product-grid" id="search-product-grid"></div>
   </section>
 
-  <section id="products" class="products">
-    <h2>Popular Products</h2>
-    <div class="product-grid" id="product-grid">
-      <!-- Product cards used to be typed here by hand.
-           Now JavaScript will build them automatically from the database. -->
-    </div>
-  </section>
-
-  <footer>
-    <p>&copy; 2026 Buyhive Store. All rights reserved.</p>
-    <p><a href="privacy.html">Privacy Policy</a> · <a href="terms.html">Terms of Service</a></p>
-  </footer>
   <div id="cart-bar" class="cart-bar hidden">
     <span id="cart-bar-info"></span>
     <a href="checkout.html" class="cart-bar-btn">View Cart</a>
   </div>
 
   <script src="script.js"></script>
+  <script src="search.js"></script>
 </body>
 </html>

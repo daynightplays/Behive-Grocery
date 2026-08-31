@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkout - Buyhive Store</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a href="index.html" class="logo">Buyhive Store</a>
+    <a href="#" id="auth-link" style="color: white; text-decoration: none;">Sign Up / Log In</a>
+    <a href="index.html" style="color: white;">← Continue Shopping</a>
+  </header>
+
+  <div class="checkout-page">
+
+    <div id="checkout-summary">
+      <div class="checkout-card">
+        <h2>Order Summary</h2>
+        <div id="checkout-items"></div>
+        <p id="checkout-empty-msg" class="hidden">Your cart is empty. <a href="index.html">Go shopping →</a></p>
+      </div>
+
+      <div class="checkout-card" id="bill-card">
+        <h2>Bill Details</h2>
+        <div id="checkout-total"></div>
+      </div>
+
+      <div class="checkout-card" id="checkout-form-section">
+        <h2>Delivery Address</h2>
+        <p id="delivery-fee-message" class="delivery-fee-message hidden"></p>
+        <textarea id="delivery-address" placeholder="Enter your full delivery address" rows="3"></textarea>
+        <button onclick="placeOrder()">Place Order (Cash on Delivery)</button>
+        <p id="checkout-message"></p>
+      </div>
+
+      <div class="checkout-card hidden" id="login-required">
+        <p>Please log in to place an order.</p>
+        <a href="index.html">Go to homepage to log in →</a>
+      </div>
+    </div>
+
+    <div id="order-success" class="hidden">
+      <div class="success-checkmark">✓</div>
+      <h2>Order Placed!</h2>
+      <p id="success-order-id"></p>
+      <p>Pay cash on delivery.</p>
+      <a href="index.html" class="success-home-link">Back to Home</a>
+    </div>
+
+  </div>
+
+  <script src="script.js"></script>
+  <script src="checkout.js"></script>
+</body>
+</html>
