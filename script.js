@@ -130,15 +130,24 @@ function getQty(productId) {
 // depending on whether this product is already in the cart
 function qtyControlHTML(product) {
   const qty = getQty(product.id);
+  const stock = product.stock; // null/undefined means unlimited
+
+  // NEW: fully out of stock — no button at all, just a clear label
+  if (stock !== null && stock !== undefined && stock <= 0) {
+    return '<span class="out-of-stock-label">Out of Stock</span>';
+  }
 
   if (qty === 0) {
     return '<button onclick="changeQty(' + product.id + ', 1)">Add to Cart</button>';
   }
 
+  // NEW: once the cart already holds the max available, disable the + button
+  const atMax = (stock !== null && stock !== undefined && qty >= stock);
+
   return '<div class="qty-stepper">' +
     '<button onclick="changeQty(' + product.id + ', -1)">−</button>' +
     '<span>' + qty + '</span>' +
-    '<button onclick="changeQty(' + product.id + ', 1)">+</button>' +
+    '<button' + (atMax ? ' disabled' : '') + ' onclick="changeQty(' + product.id + ', 1)">+</button>' +
   '</div>';
 }
 
@@ -168,61 +177,114 @@ async function loadProducts() {
   });
 
   if (filterCategory) {
-    // NEW: we're viewing ONE category — show its products
+    // We're viewing ONE category
     const backLink = document.createElement('a');
     backLink.href = 'index.html';
     backLink.textContent = '← All Categories';
     backLink.className = 'back-link';
     grid.appendChild(backLink);
 
-    const section = document.createElement('div');
-    section.className = 'category-section';
-
-    const heading = document.createElement('h3');
-    heading.className = 'category-heading';
-    heading.textContent = filterCategory;
-    section.appendChild(heading);
-
-    const row = document.createElement('div');
-    row.className = 'product-grid';
-
     const items = grouped[filterCategory] || [];
 
-    // NEW: separate items into "has size variants" vs "standalone product"
-    const variantGroups = {};
-    const standaloneItems = [];
-    items.forEach(function(product) {
-      if (product.variant_group) {
-        if (!variantGroups[product.variant_group]) {
-          variantGroups[product.variant_group] = [];
-        }
-        variantGroups[product.variant_group].push(product);
-      } else {
-        standaloneItems.push(product);
+    // NEW: check if this category actually has subcategories in use
+    const filterSubcategory = urlParams.get('subcategory');
+    const subcatSet = new Set(items.filter(function(p) { return p.subcategory; }).map(function(p) { return p.subcategory; }));
+
+    if (!filterSubcategory && subcatSet.size > 0) {
+      // NEW: SUBCATEGORY TILES — same pattern as the homepage category tiles
+      const heading = document.createElement('h3');
+      heading.className = 'category-heading';
+      heading.textContent = filterCategory;
+      grid.appendChild(heading);
+
+      const subGrouped = {};
+      items.forEach(function(p) {
+        const key = p.subcategory || 'More';
+        if (!subGrouped[key]) subGrouped[key] = [];
+        subGrouped[key].push(p);
+      });
+
+      const tileGrid = document.createElement('div');
+      tileGrid.className = 'category-tile-grid';
+
+      Object.keys(subGrouped).forEach(function(subName) {
+        const tile = document.createElement('a');
+        tile.className = 'category-tile';
+        tile.href = 'index.html?category=' + encodeURIComponent(filterCategory) + '&subcategory=' + encodeURIComponent(subName);
+
+        const firstProduct = subGrouped[subName][0];
+        const visual = firstProduct.image_url
+          ? '<img src="' + firstProduct.image_url + '" class="tile-image" alt="' + subName + '">'
+          : '<div class="tile-emoji">' + firstProduct.emoji + '</div>';
+
+        tile.innerHTML = visual + '<div class="tile-label">' + subName + '</div>';
+        tileGrid.appendChild(tile);
+      });
+
+      grid.appendChild(tileGrid);
+
+    } else {
+      // PRODUCT LIST — no subcategories exist, or we're already inside one
+      const section = document.createElement('div');
+      section.className = 'category-section';
+
+      const headingText = filterSubcategory ? (filterCategory + ' → ' + filterSubcategory) : filterCategory;
+      const heading = document.createElement('h3');
+      heading.className = 'category-heading';
+      heading.textContent = headingText;
+      section.appendChild(heading);
+
+      if (filterSubcategory) {
+        const backToCatLink = document.createElement('a');
+        backToCatLink.href = 'index.html?category=' + encodeURIComponent(filterCategory);
+        backToCatLink.textContent = '← ' + filterCategory;
+        backToCatLink.className = 'back-link';
+        section.appendChild(backToCatLink);
       }
-    });
 
-    standaloneItems.forEach(function(product) {
-      const card = document.createElement('div');
-      card.className = 'product-card';
-      const visual = product.image_url
-        ? '<img src="' + product.image_url + '" class="product-image" alt="' + product.name + '">'
-        : '<div class="product-emoji">' + product.emoji + '</div>';
-      card.innerHTML =
-        visual +
-        '<h3>' + product.name + '</h3>' +
-        '<p class="price">₹' + product.price.toFixed(2) + '</p>' +
-        '<div id="qty-container-' + product.id + '">' + qtyControlHTML(product) + '</div>';
-      row.appendChild(card);
-    });
+      const row = document.createElement('div');
+      row.className = 'product-grid';
 
-    // NEW: one card per variant group, with a size selector instead of separate cards
-    Object.keys(variantGroups).forEach(function(groupName) {
-      row.insertAdjacentHTML('beforeend', buildVariantCardHTML(groupName, variantGroups[groupName]));
-    });
+      let displayItems = items;
+      if (filterSubcategory) {
+        displayItems = items.filter(function(p) { return (p.subcategory || 'More') === filterSubcategory; });
+      }
 
-    section.appendChild(row);
-    grid.appendChild(section);
+      // Separate items into "has size variants" vs "standalone product"
+      const variantGroups = {};
+      const standaloneItems = [];
+      displayItems.forEach(function(product) {
+        if (product.variant_group) {
+          if (!variantGroups[product.variant_group]) {
+            variantGroups[product.variant_group] = [];
+          }
+          variantGroups[product.variant_group].push(product);
+        } else {
+          standaloneItems.push(product);
+        }
+      });
+
+      standaloneItems.forEach(function(product) {
+        const card = document.createElement('div');
+        card.className = 'product-card';
+        const visual = product.image_url
+          ? '<img src="' + product.image_url + '" class="product-image" alt="' + product.name + '">'
+          : '<div class="product-emoji">' + product.emoji + '</div>';
+        card.innerHTML =
+          visual +
+          '<h3>' + product.name + '</h3>' +
+          '<p class="price">₹' + product.price.toFixed(2) + '</p>' +
+          '<div id="qty-container-' + product.id + '">' + qtyControlHTML(product) + '</div>';
+        row.appendChild(card);
+      });
+
+      Object.keys(variantGroups).forEach(function(groupName) {
+        row.insertAdjacentHTML('beforeend', buildVariantCardHTML(groupName, variantGroups[groupName]));
+      });
+
+      section.appendChild(row);
+      grid.appendChild(section);
+    }
 
   } else {
     // NEW: homepage view — show only category TILES, no products listed yet
@@ -261,6 +323,11 @@ function changeQty(productId, delta) {
   let item = cart.find(function(i) { return i.id === productId; });
 
   if (item) {
+    // NEW: don't allow increasing past available stock
+    if (delta > 0 && item.stock !== null && item.stock !== undefined && item.qty >= item.stock) {
+      alert('Only ' + item.stock + ' left in stock.');
+      return;
+    }
     item.qty += delta;
     if (item.qty <= 0) {
       cart = cart.filter(function(i) { return i.id !== productId; });
@@ -268,13 +335,21 @@ function changeQty(productId, delta) {
   } else if (delta > 0) {
     const product = allProductsCache.find(function(p) { return p.id === productId; });
     if (!product) return; // safety: shouldn't happen, but avoid crashing if it does
+
+    // NEW: refuse to add anything already out of stock
+    if (product.stock !== null && product.stock !== undefined && product.stock <= 0) {
+      alert('Sorry, this item is out of stock.');
+      return;
+    }
+
     cart.push({
       id: productId,
       name: product.name,
       price: product.price,
       qty: 1,
       emoji: product.emoji,
-      image_url: product.image_url
+      image_url: product.image_url,
+      stock: product.stock
     });
   }
 
@@ -426,6 +501,32 @@ async function toggleOrders() {
 }
 
 // NEW: fetches the logged-in user's orders and displays them
+// NEW: builds a visual step-by-step progress bar for an order's status
+function buildOrderProgressHTML(status) {
+  const steps = ['Placed', 'Packed', 'Out for Delivery', 'Delivered'];
+
+  // Cancelled orders get their own simple red indicator instead of the normal bar
+  if (status === 'Cancelled') {
+    return '<div class="order-progress cancelled">✕ Order Cancelled</div>';
+  }
+
+  const currentIndex = steps.indexOf(status);
+
+  const stepsHTML = steps.map(function(step, index) {
+    // A step is "done" if it's at or before the current status
+    const isDone = index <= currentIndex;
+    const isCurrent = index === currentIndex;
+    return (
+      '<div class="progress-step' + (isDone ? ' done' : '') + (isCurrent ? ' current' : '') + '">' +
+        '<div class="progress-dot"></div>' +
+        '<div class="progress-label">' + step + '</div>' +
+      '</div>'
+    );
+  }).join('<div class="progress-line"></div>');
+
+  return '<div class="order-progress">' + stepsHTML + '</div>';
+}
+
 async function loadOrders() {
   const response = await fetch('/api/orders');
   const orders = await response.json();
@@ -449,10 +550,11 @@ async function loadOrders() {
     const card = document.createElement('div');
     card.className = 'order-card';
     card.innerHTML =
-      '<strong>Order #' + order.id + '</strong> — <span class="order-status">' + order.status + '</span><br>' +
+      '<strong>Order #' + order.id + '</strong><br>' +
       'Items: ' + itemNames + '<br>' +
       'Total: ₹' + order.total.toFixed(2) + '<br>' +
-      'Deliver to: ' + order.delivery_address;
+      'Deliver to: ' + order.delivery_address +
+      buildOrderProgressHTML(order.status);
 
     list.appendChild(card);
   });

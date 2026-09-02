@@ -194,13 +194,51 @@ app.post('/api/orders', (req, res) => {
   const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
   const finalTotal = subtotal + deliveryFee;
 
-  const insert = db.prepare(
+  // NEW: check real stock (from the database, not the browser) before allowing
+  // the order — this is the actual source of truth, and stops overselling
+  // even if two people try to buy the last item at the same time.
+  const insertOrder = db.prepare(
     'INSERT INTO orders (user_id, items_json, total, delivery_fee, delivery_address) VALUES (?, ?, ?, ?, ?)'
   );
+  const getStock = db.prepare('SELECT stock, name FROM products WHERE id = ?');
+  const decrementStock = db.prepare('UPDATE products SET stock = stock - ? WHERE id = ?');
 
-  // JSON.stringify turns the items array into a text string so it can be
-  // stored in a single database column (SQLite doesn't store arrays directly)
-  const result = insert.run(req.session.userId, JSON.stringify(items), finalTotal, deliveryFee, deliveryAddress);
+  // db.transaction bundles all these steps together — if ANY of them fails
+  // (like insufficient stock), everything rolls back as if nothing happened,
+  // instead of leaving stock partially reduced.
+  const placeOrderTransaction = db.transaction(function() {
+    for (const item of items) {
+      const product = getStock.get(item.id);
+      if (product && product.stock !== null && product.stock < item.qty) {
+        // Throwing inside a transaction cancels the whole thing automatically
+        throw new Error('OUT_OF_STOCK:' + product.name + ':' + product.stock);
+      }
+    }
+
+    for (const item of items) {
+      const product = getStock.get(item.id);
+      if (product && product.stock !== null) {
+        decrementStock.run(item.qty, item.id);
+      }
+    }
+
+    return insertOrder.run(req.session.userId, JSON.stringify(items), finalTotal, deliveryFee, deliveryAddress);
+  });
+
+  let result;
+  try {
+    result = placeOrderTransaction();
+  } catch (error) {
+    if (error.message.startsWith('OUT_OF_STOCK:')) {
+      const parts = error.message.split(':');
+      const availableQty = parts[2];
+      return res.status(400).json({
+        error: 'Sorry, "' + parts[1] + '" only has ' + availableQty + ' left in stock. Please adjust your cart.'
+      });
+    }
+    console.error('Order placement error:', error.message);
+    return res.status(500).json({ error: 'Something went wrong placing your order.' });
+  }
 
   res.json({ success: true, orderId: result.lastInsertRowid, deliveryFee: deliveryFee, total: finalTotal });
 });
@@ -243,7 +281,7 @@ app.get('/api/admin/check', requireAdmin, (req, res) => {
 // NEW: upload.single('photo') is Multer middleware — it processes the incoming
 // file (if any), saves it to the uploads/ folder, and makes it available as req.file
 app.post('/api/admin/products', requireAdmin, upload.single('photo'), (req, res) => {
-  const { name, price, emoji, category, unit, variantGroup } = req.body;
+  const { name, price, emoji, category, subcategory, unit, variantGroup, stock } = req.body;
 
   if (!name || !price) {
     return res.status(400).json({ error: 'Name and price are required.' });
@@ -260,22 +298,87 @@ app.post('/api/admin/products', requireAdmin, upload.single('photo'), (req, res)
     return res.status(400).json({ error: 'Product name must be between 1 and 100 characters.' });
   }
 
+  // NEW: stock is optional — an empty value means "unlimited," not zero
+  let parsedStock = null;
+  if (stock !== undefined && stock !== null && stock.toString().trim() !== '') {
+    parsedStock = parseInt(stock, 10);
+    if (isNaN(parsedStock) || parsedStock < 0) {
+      return res.status(400).json({ error: 'Stock must be a non-negative whole number.' });
+    }
+  }
+
   // If a photo was uploaded, its saved path becomes the image URL.
   // Otherwise, fall back to a pasted URL if one was given, or nothing.
   const imageUrl = req.file ? '/uploads/' + req.file.filename : (req.body.imageUrl || null);
 
-  const insert = db.prepare('INSERT INTO products (name, price, emoji, category, image_url, unit, variant_group) VALUES (?, ?, ?, ?, ?, ?, ?)');
+  const insert = db.prepare('INSERT INTO products (name, price, emoji, category, subcategory, image_url, unit, variant_group, stock) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
   const result = insert.run(
     name.trim(),
     parsedPrice,
     emoji || '🛒',
     category || 'Other',
+    subcategory && subcategory.trim() ? subcategory.trim() : null,
     imageUrl,
     unit ? unit.trim() : null,
-    variantGroup && variantGroup.trim() ? variantGroup.trim() : null
+    variantGroup && variantGroup.trim() ? variantGroup.trim() : null,
+    parsedStock
   );
 
   res.json({ success: true, productId: result.lastInsertRowid });
+});
+
+// NEW: edits an existing product — admin only
+app.put('/api/admin/products/:id', requireAdmin, upload.single('photo'), (req, res) => {
+  const { name, price, emoji, category, subcategory, unit, variantGroup, imageUrl, stock } = req.body;
+
+  if (!name || !price) {
+    return res.status(400).json({ error: 'Name and price are required.' });
+  }
+
+  const parsedPrice = parseFloat(price);
+  if (isNaN(parsedPrice) || parsedPrice <= 0) {
+    return res.status(400).json({ error: 'Price must be a positive number.' });
+  }
+
+  if (name.trim().length === 0 || name.length > 100) {
+    return res.status(400).json({ error: 'Product name must be between 1 and 100 characters.' });
+  }
+
+  // NEW: stock is optional — an empty value means "unlimited," not zero
+  let parsedStock = null;
+  if (stock !== undefined && stock !== null && stock.toString().trim() !== '') {
+    parsedStock = parseInt(stock, 10);
+    if (isNaN(parsedStock) || parsedStock < 0) {
+      return res.status(400).json({ error: 'Stock must be a non-negative whole number.' });
+    }
+  }
+
+  // If a new photo was uploaded, use it. Otherwise keep whatever was already
+  // there, unless a pasted URL was given instead.
+  const existing = db.prepare('SELECT image_url FROM products WHERE id = ?').get(req.params.id);
+  let finalImageUrl = existing ? existing.image_url : null;
+  if (req.file) {
+    finalImageUrl = '/uploads/' + req.file.filename;
+  } else if (imageUrl) {
+    finalImageUrl = imageUrl;
+  }
+
+  db.prepare(
+    'UPDATE products SET name = ?, price = ?, emoji = ?, category = ?, subcategory = ?, image_url = ?, unit = ?, variant_group = ?, stock = ? WHERE id = ?'
+  ).run(
+    name.trim(),
+    parsedPrice,
+    emoji || '🛒',
+    category || 'Other',
+    subcategory && subcategory.trim() ? subcategory.trim() : null,
+    finalImageUrl,
+    unit ? unit.trim() : null,
+    variantGroup && variantGroup.trim() ? variantGroup.trim() : null,
+    parsedStock,
+    req.params.id
+  );
+
+  res.json({ success: true });
 });
 
 // NEW: deletes a product — admin only

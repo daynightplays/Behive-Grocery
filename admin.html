@@ -19,7 +19,7 @@
   </div>
 
   <div id="admin-content" class="hidden" style="padding: 40px; max-width: 700px;">
-    <h2>Add a Product</h2>
+    <h2 id="form-heading">Add a Product</h2>
     <input type="text" id="new-name" placeholder="Product name">
     <select id="new-unit-select" onchange="toggleCustomUnitInput()">
       <option value="">-- Size/Unit (optional) --</option>
@@ -38,18 +38,25 @@
     </select>
     <input type="text" id="new-unit-custom" placeholder="Enter custom size/unit" class="hidden">
     <input type="number" id="new-price" placeholder="Price" step="0.01">
+    <input type="number" id="new-stock" placeholder="Stock quantity (leave blank for unlimited)" min="0" step="1">
     <input type="text" id="new-variant-group" placeholder="Links sizes together (e.g. 'Lays Chips') — leave blank if this product has no size options">
     <input type="text" id="new-emoji" placeholder="Emoji (e.g. 🍎) — used if no photo is uploaded">
     <label class="upload-label" for="new-photo">📷 Upload Product Photo</label>
     <input type="file" id="new-photo" accept="image/*" onchange="showPhotoPreview()">
     <img id="photo-preview" class="hidden" alt="Preview">
     <input type="text" id="new-image-url" placeholder="Or paste an image URL (optional)">
-    <select id="category-select" onchange="toggleNewCategoryInput()">
+    <select id="category-select" onchange="onCategoryChange()">
       <option value="">-- Select category --</option>
       <option value="__new__">+ Add a new category</option>
     </select>
     <input type="text" id="new-category-input" placeholder="New category name" class="hidden">
-    <button onclick="addProduct()">Add Product</button>
+    <select id="subcategory-select" onchange="toggleNewSubcategoryInput()">
+      <option value="">-- Subcategory (optional) --</option>
+      <option value="__new__">+ Add a new subcategory</option>
+    </select>
+    <input type="text" id="new-subcategory-input" placeholder="New subcategory name" class="hidden">
+    <button id="submit-product-btn" onclick="addProduct()">Add Product</button>
+    <a href="#" id="cancel-edit-link" class="hidden" onclick="cancelEdit(); return false;">Cancel editing</a>
     <p id="admin-message"></p>
 
     <h2 style="margin-top: 40px;">Current Products</h2>

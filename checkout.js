@@ -90,6 +90,12 @@ function changeQtyOnCheckout(productId, delta) {
   let item = cart.find(function(i) { return i.id === productId; });
   if (!item) return;
 
+  // NEW: don't allow increasing past available stock
+  if (delta > 0 && item.stock !== null && item.stock !== undefined && item.qty >= item.stock) {
+    alert('Only ' + item.stock + ' left in stock.');
+    return;
+  }
+
   item.qty += delta;
   if (item.qty <= 0) {
     cart = cart.filter(function(i) { return i.id !== productId; });

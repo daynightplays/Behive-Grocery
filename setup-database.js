@@ -12,11 +12,30 @@ db.exec(`
     price REAL NOT NULL,
     emoji TEXT,
     category TEXT DEFAULT 'Other',
+    subcategory TEXT,
     image_url TEXT,
     unit TEXT,
-    variant_group TEXT
+    variant_group TEXT,
+    stock INTEGER
   )
 `);
+
+// NEW: safe migration for stock — NULL means "unlimited stock" (no limit tracked),
+// so existing products don't suddenly become unbuyable
+const stockColumns = db.prepare("PRAGMA table_info(products)").all();
+const hasStock = stockColumns.some(function(col) { return col.name === 'stock'; });
+if (!hasStock) {
+  db.exec('ALTER TABLE products ADD COLUMN stock INTEGER');
+  console.log('Added stock column to existing products table.');
+}
+
+// NEW: safe migration for subcategory
+const subcategoryColumns = db.prepare("PRAGMA table_info(products)").all();
+const hasSubcategory = subcategoryColumns.some(function(col) { return col.name === 'subcategory'; });
+if (!hasSubcategory) {
+  db.exec('ALTER TABLE products ADD COLUMN subcategory TEXT');
+  console.log('Added subcategory column to existing products table.');
+}
 
 // NEW: safe migration for unit/variant_group, same pattern as before
 const variantColumns = db.prepare("PRAGMA table_info(products)").all();
